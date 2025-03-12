@@ -69,3 +69,46 @@ class GenerateBotView(APIView):
         
         # 返回驗證錯誤
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+    #llm
+
+import os
+from dotenv import load_dotenv
+from langchain_openai import AzureOpenAIEmbeddings, AzureOpenAI
+
+load_dotenv()
+
+AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+AZURE_OPENAI_API_BASE = os.getenv("AZURE_OPENAI_ENDPOINT")
+EMBEDDING_DEPLOYMENT = os.getenv("EMBEDDING_DEPLOYMENT")
+LLM_DEPLOYMENT = os.getenv("LLM_DEPLOYMENT")
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from langchain_openai import AzureChatOpenAI
+
+@api_view(['POST'])
+def llm_api(request):
+    question = request.data.get('question')
+    if not question:
+        return Response({"error": "Question is required"}, status=400)
+    
+    llm = AzureChatOpenAI(
+        azure_deployment=LLM_DEPLOYMENT,
+        api_key=AZURE_OPENAI_API_KEY,
+        azure_endpoint=AZURE_OPENAI_API_BASE,
+        api_version="2023-05-15"
+    )
+    
+    system_message = "You are a helpful assistant."
+    messages = [
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": question}
+    ]
+    
+    try:
+        response = llm(messages)
+        return Response({"response": response.content})
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
